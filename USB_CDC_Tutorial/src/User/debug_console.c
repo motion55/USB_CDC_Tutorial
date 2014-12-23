@@ -10,7 +10,7 @@
 /*  Files needed for linking:                               */
 /*                                                          */
 /*  Comments:                                               */
-/*    1. Debug module for Jeil marking machine.             */
+/*    1. Debug console for the AVR32 mini board.            */
 /*                                                          */
 /*----------------------------------------------------------*/
 
@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include "string.h"
 #include "debug_console.h"
+#include "Timer.h"
 
 #ifndef EOF
 #define EOF (-1)            /* End of file indicator */
@@ -53,16 +54,12 @@
 typedef unsigned char BYTE;
 typedef unsigned int  WORD;
 
-//static unsigned int dump_seg = 0;
 static unsigned int dump_beg = 0;
 static unsigned int old_dump_beg = 0;
 static unsigned int dump_end = 0;
 static unsigned char *debug_port = (unsigned char *)0x80000000;
 
 Bool bTest = FALSE;
-
-static char ascii_result[18];
-char debug_result[42];
 
 #define	BUFFER_SIZE	1024
 
@@ -75,9 +72,8 @@ void DebugSend(char *message);
 void DebugInit(void)
 {
 	tx_head = tx_tail = 0;
-	DebugSend("\r\n Welcome to Debug Console ver 1.0!");
-	sprintf(debug_result," Compile Date: %s, Time: %s \r\n",__DATE__,__TIME__);
-	DebugSend(debug_result);
+	DebugPrint("\r\n Welcome to Debug Console ver 1.0!");
+	DebugPrint(" Compile Date: %s, Time: %s \r\n",__DATE__,__TIME__);
 	SendDebugPrompt;
 }
 
@@ -85,18 +81,17 @@ unsigned int do_dump(void)
 {
 	int i1;
 	unsigned char *pByte_Val, byte_val;
+	char ascii_result[18];
 
 	old_dump_beg = dump_beg;
-	sprintf(debug_result,"\r\n %08X - ",dump_beg & 0xfffffff0);
-	DebugSend(debug_result);
+	DebugPrint("\r\n %08X - ",dump_beg & 0xfffffff0);
 	strcpy(ascii_result,"................");
 	for (i1=0;i1<(dump_beg & 0x000f);i1++) DebugSend("   ");
 	while (dump_beg <= dump_end)
 	{
 		pByte_Val = (unsigned char *)dump_beg++;
 		byte_val = *pByte_Val;
-		sprintf(debug_result,"%02X ",byte_val);
-		DebugSend(debug_result);
+		DebugPrint("%02X ",byte_val);
 		if (!iscntrl(byte_val&0x7f)) ascii_result[i1] = byte_val;
 		i1++;
 		if (!(dump_beg & 0x000f))
@@ -108,8 +103,7 @@ unsigned int do_dump(void)
 			if (dump_beg==0) break;
 			if (dump_beg <= dump_end)
 			{
-				sprintf(debug_result,"\r\n %08X - ",dump_beg & 0xfffffff0);
-				DebugSend(debug_result);
+				DebugPrint("\r\n %08X - ",dump_beg & 0xfffffff0);
 			}
 		}
 	}
@@ -162,8 +156,7 @@ void debug_parse(char *cmd_line)
 		if (sscanf(cmd_line,"%X",&temp1)==1)
 			debug_port = (unsigned char*)(temp1&0xFFFFFFFC);
 		temp2 = *(unsigned int*)debug_port;
-		sprintf(debug_result,"\r\n %08X -> %08X",(int)debug_port,temp2);
-		DebugSend(debug_result);
+		DebugPrint("\r\n %08X -> %08X",(int)debug_port,temp2);
 //		debug_port += sizeof(int);
 		break;
 	case 'F':  // fill
@@ -193,8 +186,7 @@ void debug_parse(char *cmd_line)
 		{
 			debug_port = (unsigned char*)temp1;
 			tempbyte = *(unsigned char*)debug_port;
-			sprintf(debug_result,"\r\n %08X -> %02X",(int)debug_port,tempbyte);
-			DebugSend(debug_result);
+			DebugPrint("\r\n %08X -> %02X",(int)debug_port,tempbyte);
 			debug_port += sizeof(tempbyte);
 		}
 		break;
@@ -204,8 +196,7 @@ void debug_parse(char *cmd_line)
 			debug_port = (unsigned char*)(temp1&0xFFFFFFFE);
 		}
 		tempword = *(unsigned short*)debug_port;
-		sprintf(debug_result,"\r\n %08X -> %04X",(int)debug_port,tempword);
-		DebugSend(debug_result);
+		DebugPrint("\r\n %08X -> %04X",(int)debug_port,tempword);
 		break;
 	case 'K':
 		break;
@@ -215,8 +206,7 @@ void debug_parse(char *cmd_line)
 		if (sscanf(cmd_line,"%X %X",&temp1,&temp2)==2)
 		{
 			debug_port = (unsigned char*)(temp1&0xFFFFFFFC);
-			sprintf(debug_result,"\r\n %08X <- %08X",(int)debug_port,temp2);
-			DebugSend(debug_result);
+			DebugPrint("\r\n %08X <- %08X",(int)debug_port,temp2);
 			*(unsigned int*)debug_port = temp2;
 			debug_port += sizeof(int);
 		}
@@ -232,8 +222,7 @@ void debug_parse(char *cmd_line)
 		{
 			debug_port = (unsigned char*)temp1;
 			tempbyte = temp2;
-			sprintf(debug_result,"\r\n %08X <- %02X",(int)debug_port,tempbyte);
-			DebugSend(debug_result);
+			DebugPrint("\r\n %08X <- %02X",(int)debug_port,tempbyte);
 			*debug_port = tempbyte;
 			debug_port += sizeof(tempbyte);
 		}
@@ -313,9 +302,13 @@ void debug_parse(char *cmd_line)
 			bTest = !bTest;
 			if (bTest)
 			{
+				ResetTimer(BLINK_TIMER);
+				StartTimer(BLINK_TIMER, 500);
+				DebugSend("\r\n LED Blink Started.");
 			}
 			else
 			{
+				DebugSend("\r\n LED Blink Stopped.");
 			}
 		}
 		break;
@@ -354,8 +347,7 @@ void debug_parse(char *cmd_line)
 		{
 			debug_port = (unsigned char*)(temp1&0xFFFFFFFE);
 			tempword = temp2;
-			sprintf(debug_result,"\r\n %08X <- %04X",(int)debug_port,tempword);
-			DebugSend(debug_result);
+			DebugPrint("\r\n %08X <- %04X",(int)debug_port,tempword);
 			*(unsigned short*)debug_port = tempword;
 			debug_port += sizeof(tempword);
 		}
@@ -503,6 +495,12 @@ void debug_idle(void)
 {
 	if (bTest)
 	{
+		if (TimerOut(BLINK_TIMER))
+		{
+			ResetTimer(BLINK_TIMER);
+			StartTimer(BLINK_TIMER, 500);
+			ioport_toggle_pin_level(BLINK_LED);
+		}
 	}
 }
 
@@ -542,9 +540,10 @@ void DebugSend(char *message)
 
 void DebugPrint(const char *format, ...)
 {
-    va_list argptr;
+	char debug_result[82];
+	va_list argptr;
     va_start(argptr, format);
-    sprintf(debug_result, format, argptr);
+    vsprintf(debug_result, format, argptr);
     va_end(argptr);
 	DebugSend(debug_result);
 }

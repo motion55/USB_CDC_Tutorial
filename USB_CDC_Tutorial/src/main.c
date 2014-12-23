@@ -27,6 +27,7 @@
  */
 #include <asf.h>
 #include "debug_console.h"
+#include "Timer.h"
 
 int main (void)
 {
@@ -35,6 +36,10 @@ int main (void)
 
 	board_init();
 
+	SetupTimer();
+	
+	InitTimer();
+	
 	// Insert application code here, after the board has been initialized.
 	cpu_irq_enable();	//Interrupts must be enabled for USB to work
 	
@@ -45,12 +50,11 @@ int main (void)
 
 	while (true) {
 		DebugTask();
+	
 	}
 }
 
-void my_callback_rx_notify(uint8_t port)
+void my_callback_cdc_set_dtr(uint8_t port, bool b_enable)
 {
-	while (udi_cdc_is_rx_ready()) {
-		udi_cdc_putc(udi_cdc_getc());
-	}
+	if (b_enable) DebugInit();
 }

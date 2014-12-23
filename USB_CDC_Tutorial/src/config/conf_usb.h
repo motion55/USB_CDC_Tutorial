@@ -126,7 +126,8 @@
 #define  UDI_CDC_RX_NOTIFY(port)
 #define  UDI_CDC_TX_EMPTY_NOTIFY(port)
 #define  UDI_CDC_SET_CODING_EXT(port,cfg)
-#define  UDI_CDC_SET_DTR_EXT(port,set)
+#define  UDI_CDC_SET_DTR_EXT(port,set)	my_callback_cdc_set_dtr(port,set)
+extern void my_callback_cdc_set_dtr(uint8_t port, bool b_enable);
 #define  UDI_CDC_SET_RTS_EXT(port,set)
 
 // #define UDI_CDC_ENABLE_EXT(port) my_callback_cdc_enable()

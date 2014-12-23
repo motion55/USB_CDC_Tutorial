@@ -37,4 +37,7 @@
 #define BOARD_OSC0_STARTUP_US  17000
 #define BOARD_OSC0_IS_XTAL     true
 
+#define BLINK_TIMER     	1
+#define BLINK_LED   		AVR32_PIN_PD30
+
 #endif // USER_BOARD_H
